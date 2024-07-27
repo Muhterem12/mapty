@@ -112,3 +112,5 @@ const app = new App(); // 'app' doesent need any parameter
 
 console.log(map);
 console.log(mapEvent);
+
+console.log('Muhterem');
