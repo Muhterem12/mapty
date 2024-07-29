@@ -1,4 +1,6 @@
-'use strict';
+console.log('muhterem alkan');
+
+('use strict');
 
 // Comment without 'Better Comments' extension
 // ! Alert
@@ -23,7 +25,8 @@ const inputElevation = document.querySelector('.form__input--elevation');
 // ! PARENT WORKOUT CLASS
 class Workout {
   date = new Date();
-  id = (Date.now() + ' ').slice(-10);
+  id = (Date.now() + '').slice(-10); // *  creating a unique id
+  clicks = 0;
 
   constructor(coords, distance, duration) {
     this.distance = distance; // in km
@@ -38,6 +41,10 @@ class Workout {
     // prettier-ignore
     this.description = `${this.type[0].toUpperCase()}${this.type.slice(1)} on ${
       months[this.date.getMonth()]} ${this.date.getDate()}`;
+  }
+
+  click() {
+    this.clicks++;
   }
 }
 // ! RUNNING CLASS
@@ -85,17 +92,22 @@ console.log(run1, cycling1);
 // ! //////////////////////////////////
 // ! PROJECT ARCHITECTURE
 class App {
+  #mapZoomLevel = 13;
   #map;
   #mapEvent;
   #workouts = [];
 
   constructor() {
+    // Get user's position
     this._getPosition(); // app._getPosition;
 
-    // Clear input fields
-    form.addEventListener('submit', this._newWorkout.bind(this)); // we have to set 'this' manually, or it will point to form element
+    // Get data from local storage
+    this._getLocalStorage();
 
+    // Event Handlers
+    form.addEventListener('submit', this._newWorkout.bind(this)); // we have to set 'this' manually, or it will point to form element
     inputType.addEventListener('change', this._toggleElevationField);
+    containerWorkouts.addEventListener('click', this._moveToPopup.bind(this));
   }
   _getPosition() {
     // checking if geolocation exists
@@ -119,7 +131,7 @@ class App {
     const coords = [latitude, longitude];
     // const map = L.map('map').setView([51.505, -0.09], 13); // default, pointing to london
 
-    this.#map = L.map('map').setView(coords, 15.2); // second value (13) shows how zoomd out it is
+    this.#map = L.map('map').setView(coords, this.#mapZoomLevel); // second value (13) shows how zoomd out it is
     console.log(this);
     // openstreetmap is the open-source map that we will use, you can also use google maps etc.
 
@@ -219,7 +231,10 @@ class App {
 
     // TODO Clear input fields + Hide the form
     // prettier-ignore
-    this._hideForm()
+    this._hideForm();
+
+    // TODO Set Local storage to all workouts
+    this._setLocalStorage();
   }
 
   _renderWorkoutMarker(workout) {
@@ -282,7 +297,8 @@ class App {
       html += `
           <div class="workout__details">
             <span class="workout__icon">⚡️</span>
-            <span class="workout__value">${workout.speed.toFixed(1)}</span> 
+            <span class="workout__value">${workout.speed.toFixed(1)}</span>
+
             <span class="workout__unit">min/km</span>
           </div>
           <div class="workout__details">
@@ -297,27 +313,103 @@ class App {
     // ! inserting it as sibling element to form
     form.insertAdjacentHTML('afterend', html);
   }
+
+  _moveToPopup(e) {
+    const workoutEl = e.target.closest('.workout'); // getting the closest workout when clicked // closest is a life saver 🫀
+    console.log(workoutEl);
+
+    if (!workoutEl) return;
+
+    const workout = this.#workouts.find(
+      (work) => work.id === workoutEl.dataset.id
+    );
+    console.log(workout);
+
+    this.#map.setView(workout.coords, this.#mapZoomLevel, {
+      animate: true,
+      pan: { duration: 0.7 },
+    });
+
+    // using public interface
+    workout.click();
+  }
+
+  // ! LOCAL STORAGE APIr
+  _setLocalStorage() {
+    // dont use local storage API for huge amounts of data,  that will slow down our application
+    // JSON.stringify() converts any object to string
+    localStorage.setItem('workouts', JSON.stringify(this.#workouts)); // first one is key and second one is a value that must be string
+  }
+
+  _getLocalStorage() {
+    // JSON.parse() to convert to convert it to a object, as we changed it to string with JSON.stringify()
+    const data = JSON.parse(localStorage.getItem('workouts'));
+    console.log(data);
+
+    if (!data) return;
+
+    this.#workouts = data; // BRILLIANT
+    this.#workouts.forEach((work) => this._renderWorkout(work));
+  }
 }
 const app = new App(); // 'app' doesent need any parameter
 
-//
-// app._getPosition; // instead write this in constructor, constructor gets called as the page gets load
+/* 
+  // ! render workout
+  _renderWorkout(workout) {
+    let html = `
+        <li class="workout workout--${workout.type}" data-id="${workout.id}">
+          <h2 class="workout__title">${workout.description}</h2> 
+          <div class="workout__details">
+            <span class="workout__icon">${
+              workout.type === 'running' ? '🏃' : '🚴‍♀️'
+            }</span>
+            <span class="workout__value">${workout.distance}</span>
+            <span class="workout__unit">km</span>
+          </div>
+          <div class="workout__details">
+            <span class="workout__icon">⏱</span>
+            <span class="workout__value">${workout.duration}</span>
+            <span class="workout__unit">min</span>
+          </div>`;
 
-// console.log(map);
-// console.log(mapEvent);
+    // ! html when running
+    // toFixed(1) is for rounding the numbert to 1 decimal place
+    if (workout.type === 'running') {
+      html += `
+          <div class="workout__details">
+            <span class="workout__icon">⚡️</span>
+            <span class="workout__value">${workout.pace.toFixed(1)}</span> 
+            <span class="workout__unit">min/km</span>
+          </div>
+          <div class="workout__details">
+            <span class="workout__icon">🦶🏼</span>
+            <span class="workout__value">${workout.cadence}</span>
+            <span class="workout__unit">spm</span>
+          </div>
+        </li>
+            `;
+    }
 
-// L.marker(workout.coords)
-//   .addTo(this.#map)
-//   .bindPopup(
-//     L.popup({
-//       maxWidth: 250,
-//       minWidth: 100,
-//       autoClose: false,
-//       closeOnClick: false,
-//       className: `${workout.type}-popup`,
-//     })
-//   )
-//   .setPopupContent(
-//     `${workout.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${workout.description}`
-//   )
-//   .openPopup();
+    // ! html when cycling
+    if (workout.type === 'cycling') {
+      html += `
+          <div class="workout__details">
+            <span class="workout__icon">⚡️</span>
+            <span class="workout__value">${workout.speed.toFixed(1)}</span>
+
+            <span class="workout__unit">min/km</span>
+          </div>
+          <div class="workout__details">
+            <span class="workout__icon">⛰</span>
+            <span class="workout__value">${workout.elevationGain}</span>
+            <span class="workout__unit">m</span>
+          </div>
+        </li>
+        `;
+    }
+
+    // ! inserting it as sibling element to form
+    form.insertAdjacentHTML('afterend', html);
+  }
+*/
