@@ -1,5 +1,3 @@
-console.log('muhterem alkan');
-
 ('use strict');
 
 // Comment without 'Better Comments' extension
@@ -87,7 +85,6 @@ class Cycling extends Workout {
 
 const run1 = new Running([39, -12], 5.2, 24, 178); // next we have the diastabce
 const cycling1 = new Cycling([39, -12], 27, 95, 523);
-console.log(run1, cycling1);
 
 // ! //////////////////////////////////
 // ! PROJECT ARCHITECTURE
@@ -122,8 +119,6 @@ class App {
     }
   }
   _loadMap(position) {
-    console.log(position);
-
     const { longitude, latitude } = position.coords;
     // console.log(latitude, longitude);
     // console.log(`https://www.google.com/maps/@${latitude},${longitude}`);
@@ -132,7 +127,7 @@ class App {
     // const map = L.map('map').setView([51.505, -0.09], 13); // default, pointing to london
 
     this.#map = L.map('map').setView(coords, this.#mapZoomLevel); // second value (13) shows how zoomd out it is
-    console.log(this);
+
     // openstreetmap is the open-source map that we will use, you can also use google maps etc.
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -141,6 +136,8 @@ class App {
     }).addTo(this.#map);
     // handling clicks on map
     this.#map.on('click', this._showForm.bind(this));
+
+    this.#workouts.forEach((work) => this._renderWorkoutMarker(work));
   }
 
   _showForm(mapE) {
@@ -221,7 +218,6 @@ class App {
 
     // TODO Add new object to workout array
     this.#workouts.push(workout);
-    console.log(this.#workouts);
 
     // TODO render workout on map as marker
     this._renderWorkoutMarker(workout); // calling it as function of the object, this keyword in that method will be current object
@@ -280,7 +276,9 @@ class App {
       html += `
           <div class="workout__details">
             <span class="workout__icon">⚡️</span>
-            <span class="workout__value">${workout.pace.toFixed(1)}</span> 
+            <span class="workout__value">${
+              workout.pace ? workout.pace.toFixed(1) : 'No Pace'
+            }</span> 
             <span class="workout__unit">min/km</span>
           </div>
           <div class="workout__details">
@@ -297,7 +295,9 @@ class App {
       html += `
           <div class="workout__details">
             <span class="workout__icon">⚡️</span>
-            <span class="workout__value">${workout.speed.toFixed(1)}</span>
+            <span class="workout__value">${
+              workout.speed ? workout.speed.toFixed(1) : 'No Speed'
+            }</span>
 
             <span class="workout__unit">min/km</span>
           </div>
@@ -316,14 +316,12 @@ class App {
 
   _moveToPopup(e) {
     const workoutEl = e.target.closest('.workout'); // getting the closest workout when clicked // closest is a life saver 🫀
-    console.log(workoutEl);
 
     if (!workoutEl) return;
 
     const workout = this.#workouts.find(
       (work) => work.id === workoutEl.dataset.id
     );
-    console.log(workout);
 
     this.#map.setView(workout.coords, this.#mapZoomLevel, {
       animate: true,
@@ -331,85 +329,36 @@ class App {
     });
 
     // using public interface
-    workout.click();
+    // workout.click();
   }
 
-  // ! LOCAL STORAGE APIr
+  // ! LOCAL STORAGE API
   _setLocalStorage() {
+    // objects coming from local storage will not inherit all methods
     // dont use local storage API for huge amounts of data,  that will slow down our application
     // JSON.stringify() converts any object to string
     localStorage.setItem('workouts', JSON.stringify(this.#workouts)); // first one is key and second one is a value that must be string
   }
 
   _getLocalStorage() {
+    // we lost prototype chain when we converted objects to string then back to object from string,
+
     // JSON.parse() to convert to convert it to a object, as we changed it to string with JSON.stringify()
     const data = JSON.parse(localStorage.getItem('workouts'));
-    console.log(data);
 
     if (!data) return;
 
     this.#workouts = data; // BRILLIANT
-    this.#workouts.forEach((work) => this._renderWorkout(work));
+
+    this.#workouts.forEach((work) => {
+      this._renderWorkout(work);
+    });
+  }
+
+  reset() {
+    // app.reset
+    localStorage.removeItem('workouts');
+    location.reload();
   }
 }
 const app = new App(); // 'app' doesent need any parameter
-
-/* 
-  // ! render workout
-  _renderWorkout(workout) {
-    let html = `
-        <li class="workout workout--${workout.type}" data-id="${workout.id}">
-          <h2 class="workout__title">${workout.description}</h2> 
-          <div class="workout__details">
-            <span class="workout__icon">${
-              workout.type === 'running' ? '🏃' : '🚴‍♀️'
-            }</span>
-            <span class="workout__value">${workout.distance}</span>
-            <span class="workout__unit">km</span>
-          </div>
-          <div class="workout__details">
-            <span class="workout__icon">⏱</span>
-            <span class="workout__value">${workout.duration}</span>
-            <span class="workout__unit">min</span>
-          </div>`;
-
-    // ! html when running
-    // toFixed(1) is for rounding the numbert to 1 decimal place
-    if (workout.type === 'running') {
-      html += `
-          <div class="workout__details">
-            <span class="workout__icon">⚡️</span>
-            <span class="workout__value">${workout.pace.toFixed(1)}</span> 
-            <span class="workout__unit">min/km</span>
-          </div>
-          <div class="workout__details">
-            <span class="workout__icon">🦶🏼</span>
-            <span class="workout__value">${workout.cadence}</span>
-            <span class="workout__unit">spm</span>
-          </div>
-        </li>
-            `;
-    }
-
-    // ! html when cycling
-    if (workout.type === 'cycling') {
-      html += `
-          <div class="workout__details">
-            <span class="workout__icon">⚡️</span>
-            <span class="workout__value">${workout.speed.toFixed(1)}</span>
-
-            <span class="workout__unit">min/km</span>
-          </div>
-          <div class="workout__details">
-            <span class="workout__icon">⛰</span>
-            <span class="workout__value">${workout.elevationGain}</span>
-            <span class="workout__unit">m</span>
-          </div>
-        </li>
-        `;
-    }
-
-    // ! inserting it as sibling element to form
-    form.insertAdjacentHTML('afterend', html);
-  }
-*/
